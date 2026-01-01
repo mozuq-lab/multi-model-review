@@ -110,3 +110,9 @@ Copilot の精査結果を受けて：
 | `gpt-5`                | デフォルト、バランス型 |
 | `gpt-5.1-codex-max`    | コード特化、高性能     |
 | `gemini-3-pro-preview` | Google 製              |
+
+## 注意事項
+
+- プロンプトが長すぎると `Argument list too long` エラーが発生する
+- `--add-dir .` により Copilot が直接ファイルを読めるため、diff 全文は省略可
+- 大規模な変更は分割してレビュー
