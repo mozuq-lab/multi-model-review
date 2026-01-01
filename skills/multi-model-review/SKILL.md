@@ -168,3 +168,24 @@ Please re-examine <ファイル名> and clarify:
 1. **コード変更の詳細は省略** - `--add-dir .` により Copilot が直接ファイルを読めるため、diff 全文をプロンプトに含める必要はない
 2. **レビュー結果を要約** - 各問題を1-2行で簡潔に記述し、詳細は Copilot に確認させる
 3. **対象を分割** - 大規模な変更は複数回に分けてレビュー（例: ディレクトリ単位、機能単位）
+
+## Copilot CLI 呼び出しのベストプラクティス（エージェント向け）
+
+Copilot CLI は応答に時間がかかるため、エージェントから呼び出す際はバックグラウンド実行が必要。
+
+### GitHub Copilot エージェント向け
+
+> `run_in_terminal` / `get_terminal_output` を使用する場合
+
+1. `run_in_terminal` で `isBackground: true` を指定してバックグラウンド実行
+2. `get_terminal_output` でターミナル ID を使って結果を確認
+3. 3-5 秒間隔でポーリング（通常 4-8 回程度で結果取得）
+4. 10 回以上応答がない場合はタイムアウトと判断
+
+### Claude Code 向け
+
+> `Bash` / `TaskOutput` を使用する場合
+
+1. `Bash` ツールで `run_in_background: true` を指定してバックグラウンド実行
+2. `TaskOutput` ツールで結果を取得（`block: true` で完了待ち可能）
+3. タイムアウトは `timeout` パラメータで指定可能（最大 600000ms）
