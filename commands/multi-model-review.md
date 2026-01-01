@@ -113,6 +113,88 @@ Copilot の精査結果を受けて：
 
 ## 注意事項
 
-- プロンプトが長すぎると `Argument list too long` エラーが発生する
-- `--add-dir .` により Copilot が直接ファイルを読めるため、diff 全文は省略可
-- 大規模な変更は分割してレビュー
+- `copilot` CLI がインストールされている必要がある
+- `--add-dir .` でプロジェクトへのアクセスを許可
+- 複数回のやり取りが必要な場合、それぞれ別の copilot コマンドとして実行
+- 大規模なコード変更の場合、レビュー対象を分割して精査することを推奨
+
+## 引数長制限とシェルエスケープへの対応
+
+シェルの引数長制限（macOS: 約 262KB、Linux: 約 2MB）を超えると `Argument list too long` エラーが発生する。
+また、長いプロンプトをシェルで直接渡すとエスケープ問題でコマンドが正しく実行されないことがある。
+
+### 対策
+
+1. **コード変更の詳細は省略** - `--add-dir .` により Copilot が直接ファイルを読めるため、diff 全文をプロンプトに含める必要はない
+2. **レビュー結果を要約** - 各問題を 1-2 行で簡潔に記述し、詳細は Copilot に確認させる
+3. **対象を分割** - 大規模な変更は複数回に分けてレビュー（例: ディレクトリ単位、機能単位）
+4. **ファイル経由でプロンプトを渡す** - 長いプロンプトはファイルに保存してコマンド置換で渡す（推奨）
+
+### ファイル経由でプロンプトを渡す方法（推奨）
+
+長いプロンプトやマークダウン形式のプロンプトは、ファイルに保存してからコマンド置換で渡すことで、シェルのエスケープ問題を回避できる。
+
+#### macOS / Linux (Bash/Zsh)
+
+```bash
+# 1. プロンプトをファイルに保存（エージェントの場合は create_file ツールを使用）
+#    推奨: プロジェクト内 .multi-model-review/ ディレクトリに保存
+# 2. コマンド置換でプロンプトを渡す
+copilot -p "$(cat .multi-model-review/review-prompt.txt)" --add-dir . --allow-all-tools --model <model> -s
+```
+
+#### Windows (PowerShell)
+
+```powershell
+# 1. プロンプトをファイルに保存（エージェントの場合は create_file ツールを使用）
+#    推奨: プロジェクト内 .multi-model-review/ ディレクトリに保存
+# 2. Get-Content でファイルを読み込んで渡す
+copilot -p (Get-Content -Raw ".multi-model-review\review-prompt.txt") --add-dir . --allow-all-tools --model <model> -s
+```
+
+#### Windows (cmd.exe)
+
+cmd.exe では直接のコマンド置換が難しいため、PowerShell 経由で実行するか、短いプロンプトを直接渡すことを推奨。
+
+```cmd
+:: PowerShell経由で実行（プロジェクト内の .multi-model-review/ ディレクトリを使用）
+powershell -Command "copilot -p (Get-Content -Raw '.multi-model-review\review-prompt.txt') --add-dir . --allow-all-tools --model <model> -s"
+```
+
+## Copilot CLI 呼び出しのベストプラクティス（エージェント向け）
+
+Copilot CLI は応答に時間がかかるため、エージェントから呼び出す際はバックグラウンド実行が必要。
+
+### GitHub Copilot エージェント向け
+
+> `run_in_terminal` / `get_terminal_output` を使用する場合
+
+1. **プロンプトをファイルに保存** - `create_file` ツールでプロンプトを保存
+   - **推奨**: プロジェクト内の `.multi-model-review/review-prompt.txt`
+2. `run_in_terminal` で `isBackground: true` を指定してバックグラウンド実行
+
+   **macOS / Linux (Bash/Zsh):**
+
+   ```bash
+   copilot -p "$(cat .multi-model-review/review-prompt.txt)" --add-dir . --allow-all-tools --model <model> -s
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   copilot -p (Get-Content -Raw ".multi-model-review\review-prompt.txt") --add-dir . --allow-all-tools --model <model> -s
+   ```
+
+3. `get_terminal_output` でターミナル ID を使って結果を確認
+4. 3-5 秒間隔でポーリング（通常 10-15 回程度で結果取得）
+5. 20 回以上応答がない場合はタイムアウトと判断
+
+> **注意**: シェルで直接長いプロンプトを渡すと、エスケープ問題やツールによるコマンド簡略化で正しく実行されないことがある。ファイル経由が最も確実。
+
+### Claude Code 向け
+
+> `Bash` / `TaskOutput` を使用する場合
+
+1. `Bash` ツールで `run_in_background: true` を指定してバックグラウンド実行
+2. `TaskOutput` ツールで結果を取得（`block: true` で完了待ち可能）
+3. タイムアウトは `timeout` パラメータで指定可能（最大 600000ms）

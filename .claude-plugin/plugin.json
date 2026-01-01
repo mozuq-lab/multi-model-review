@@ -1,6 +1,6 @@
 {
   "name": "multi-model-review",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Multi-model code review plugin. Performs code review with the primary LLM, then has GitHub Copilot CLI verify the findings for a comprehensive, multi-perspective review.",
   "author": {
     "name": "mozuq-lab"
